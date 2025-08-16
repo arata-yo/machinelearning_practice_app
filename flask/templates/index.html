@@ -417,6 +417,41 @@
         <div class="probabilities" id="probabilities"></div>
     </div>
 </div>
+
+<div class="chatbot-container">
+    <div class="chatbot-toggle" onclick="toggleChatbot()">
+        <svg viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+        </svg>
+    </div>
+    
+    <div class="chatbot-window" id="chatbotWindow">
+        <div class="chatbot-header">
+            <span class="chatbot-title">🤖 Irisアシスタント</span>
+            <button class="chatbot-close" onclick="toggleChatbot()">×</button>
+        </div>
+        
+        <div class="chatbot-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-bubble">
+                    こんにちは！Iris分類システムについて質問がありましたらお聞きください。
+                </div>
+            </div>
+        </div>
+        
+        <div class="suggested-questions">
+            <div class="suggested-questions-title">よくある質問：</div>
+            <span class="suggestion-chip" onclick="sendSuggestion('入力は何か？')">入力について</span>
+            <span class="suggestion-chip" onclick="sendSuggestion('単位は何か？')">単位</span>
+            <span class="suggestion-chip" onclick="sendSuggestion('確率は何を表しているのか？')">確率の意味</span>
+        </div>
+        
+        <div class="chatbot-input">
+            <input type="text" id="chatInput" placeholder="質問を入力..." onkeypress="if(event.key==='Enter')sendMessage()">
+            <button class="chatbot-send" onclick="sendMessage()">送信</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -499,6 +534,50 @@ function displayResult(data) {
     }
     
     container.style.display = 'block';
+}
+function toggleChatbot() {
+    const window = document.getElementById('chatbotWindow');
+    window.classList.toggle('active');
+}
+
+async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // ユーザーメッセージを表示
+    addMessage(message, 'user');
+    input.value = '';
+    
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message: message})
+        });
+        
+        const data = await response.json();
+        
+        // ボットの返答を表示
+        addMessage(data.response, 'bot');
+    } catch (error) {
+        addMessage('申し訳ございません。エラーが発生しました。', 'bot');
+    }
+}
+
+function addMessage(text, sender) {
+    const messagesDiv = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender}`;
+    messageDiv.innerHTML = `<div class="message-bubble">${text}</div>`;
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function sendSuggestion(question) {
+    document.getElementById('chatInput').value = question;
+    sendMessage();
 }
 </script>
 {% endblock %}
