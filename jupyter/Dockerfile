@@ -11,7 +11,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 EXPOSE 8888
 
-CMD jupyter lab --ip=0.0.0.0 --port=8888 \
-    --no-browser --allow-root \
-    --NotebookApp.base_url=/jupyter \
-    --NotebookApp.token=${JUPYTER_TOKEN} \
+# 環境変数を使用するようにCMDを修正
+CMD ["sh", "-c", "jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.base_url=/jupyter --NotebookApp.token=${JUPYTER_TOKEN}"]

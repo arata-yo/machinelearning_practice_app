@@ -54,6 +54,7 @@ services:
       - ./data:/workspace/data
       - ./models:/workspace/models
     environment:
+      JUPYTER_TOKEN: ${JUPYTER_TOKEN}
       DATABASE_URL: postgresql://user:password@postgres:5432/mlapp
     depends_on:
       - postgres
