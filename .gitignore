@@ -1,0 +1,3 @@
+.env
+models/*.pkl
+notebooks/.ipynb_checkpoints/
