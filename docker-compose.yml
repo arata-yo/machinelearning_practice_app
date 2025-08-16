@@ -67,6 +67,24 @@ services:
     ports:
       - "6379:6379"
     restart: unless-stopped
+    
+  # オプション: LLMサービス
+  llm:
+    build: ./llm
+    container_name: ml_llm
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./llm/training_data.jsonl:/app/training_data.jsonl
+      - llm_models:/app/models
+    environment:
+      FLASK_ENV: development
+      PYTHONUNBUFFERED: 1
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
 
 volumes:
   postgres_data:
