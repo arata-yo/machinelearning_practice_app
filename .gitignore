@@ -1,3 +1,5 @@
 .env
 models/*.pkl
 notebooks/.ipynb_checkpoints/
+*.pyc
+__pycache__/
