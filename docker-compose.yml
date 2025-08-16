@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ml_postgres
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mlapp
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  flask:
+    build: ./flask
+    container_name: ml_flask
+    environment:
+      DATABASE_URL: postgresql://user:password@postgres:5432/mlapp
+      FLASK_ENV: development
+    volumes:
+      - ./flask:/app
+      - ./models:/app/models  # MLモデル保存用
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  nginx:
+    build: ./nginx
+    container_name: ml_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./flask/static:/static
+    depends_on:
+      - flask
+    restart: unless-stopped
+
+  jupyter:
+    build: ./jupyter
+    container_name: ml_jupyter
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/workspace/notebooks
+      - ./data:/workspace/data
+      - ./models:/workspace/models
+    environment:
+      DATABASE_URL: postgresql://user:password@postgres:5432/mlapp
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  # オプション: Redis（キャッシュ用）
+  redis:
+    image: redis:7-alpine
+    container_name: ml_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
