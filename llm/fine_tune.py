@@ -29,17 +29,19 @@ def fine_tune_model():
     """モデルのファインチューニング"""
     print("ファインチューニングを開始します...")
     
-    # 小規模モデルを使用（メモリ節約）
-    model_name = "microsoft/DialoGPT-small"
+    # より小さいモデルを使用
+    model_name = "microsoft/DialoGPT-small"  # または "distilgpt2" でさらに小さく
     
     # トークナイザーとモデルの読み込み
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.pad_token = tokenizer.eos_token
     
+    # 8bit量子化でメモリ節約
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-        device_map="auto" if torch.cuda.is_available() else None
+        torch_dtype=torch.float16,  # 16bit精度でメモリ半減
+        device_map="cpu",  # CPU使用
+        low_cpu_mem_usage=True  # メモリ使用量削減
     )
     
     # データセットの準備
@@ -50,7 +52,7 @@ def fine_tune_model():
             examples['text'],
             padding=True,
             truncation=True,
-            max_length=256
+            max_length=128  # 256から128に減らす
         )
     
     tokenized_dataset = dataset.map(tokenize_function, batched=True)
@@ -60,25 +62,19 @@ def fine_tune_model():
     train_dataset = train_test_split['train']
     eval_dataset = train_test_split['test']
     
-    # トレーニング設定（軽量版）
+    # トレーニング設定（超軽量版）
     training_args = TrainingArguments(
         output_dir="/app/models/finetuned",
         overwrite_output_dir=True,
-        num_train_epochs=3,
+        num_train_epochs=1,  # エポック数を減らす
         per_device_train_batch_size=1,
-        save_steps=50,
-        save_total_limit=2,
-        prediction_loss_only=True,
+        gradient_accumulation_steps=4,  # 勾配累積でメモリ節約
+        fp16=True,  # 16bit精度でメモリ半減
+        save_steps=100,
         logging_steps=10,
-        warmup_steps=10,
-        logging_dir='/app/logs',
-        # 以下の3つを一致させる
-        evaluation_strategy="steps",  # stepsに統一
-        save_strategy="steps",         # stepsに統一
-        eval_steps=50,                 # save_stepsと同じ値
-        load_best_model_at_end=True,
-        metric_for_best_model="loss",
-        greater_is_better=False,
+        evaluation_strategy="no",  # 評価を無効化してメモリ節約
+        save_strategy="epoch",
+        max_steps=50,  # 最大ステップ数を制限
     )
     
     # データコレーター
@@ -87,13 +83,12 @@ def fine_tune_model():
         mlm=False,
     )
     
-    # トレーナーの初期化
+    # トレーナーの初期化（評価なし）
     trainer = Trainer(
         model=model,
         args=training_args,
         data_collator=data_collator,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,  # 評価データセットを追加
+        train_dataset=tokenized_dataset,  # 全データを訓練に使用
     )
     
     # トレーニング実行
