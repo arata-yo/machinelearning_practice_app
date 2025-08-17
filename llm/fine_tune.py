@@ -55,6 +55,11 @@ def fine_tune_model():
     
     tokenized_dataset = dataset.map(tokenize_function, batched=True)
     
+    # 訓練データと評価データに分割（評価用に20%使用）
+    train_test_split = tokenized_dataset.train_test_split(test_size=0.2)
+    train_dataset = train_test_split['train']
+    eval_dataset = train_test_split['test']
+    
     # トレーニング設定（軽量版）
     training_args = TrainingArguments(
         output_dir="/app/models/finetuned",
@@ -67,6 +72,10 @@ def fine_tune_model():
         logging_steps=10,
         warmup_steps=10,
         logging_dir='/app/logs',
+        # 以下の3つを一致させる
+        evaluation_strategy="steps",  # stepsに統一
+        save_strategy="steps",         # stepsに統一
+        eval_steps=50,                 # save_stepsと同じ値
         load_best_model_at_end=True,
         metric_for_best_model="loss",
         greater_is_better=False,
@@ -83,7 +92,8 @@ def fine_tune_model():
         model=model,
         args=training_args,
         data_collator=data_collator,
-        train_dataset=tokenized_dataset,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,  # 評価データセットを追加
     )
     
     # トレーニング実行
