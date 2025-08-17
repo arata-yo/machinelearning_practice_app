@@ -72,9 +72,9 @@ def fine_tune_model():
         fp16=True,  # 16bit精度でメモリ半減
         save_steps=100,
         logging_steps=10,
-        evaluation_strategy="no",  # 評価を無効化してメモリ節約
+        evaluation_strategy="epoch",  # 評価を無効化してメモリ節約
         save_strategy="epoch",
-        max_steps=50,  # 最大ステップ数を制限
+        max_steps=10,  # 最大ステップ数を制限
     )
     
     # データコレーター
