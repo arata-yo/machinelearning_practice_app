@@ -557,12 +557,35 @@ async function sendMessage() {
             body: JSON.stringify({message: message})
         });
         
-        const data = await response.json();
+        // レスポンスのステータスをチェック
+        console.log('Response status:', response.status);
         
-        // ボットの返答を表示
-        addMessage(data.response, 'bot');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Response data:', data);  // デバッグ用
+        
+        // レスポンスの構造をチェック
+        if (data.response) {
+            // 正常な応答
+            addMessage(data.response, 'bot');
+        } else if (data.answer) {
+            // 古い形式のレスポンス（ルールベース）
+            addMessage(data.answer, 'bot');
+        } else if (data.error) {
+            // エラーメッセージがある場合
+            console.error('API Error:', data.error);
+            addMessage(data.error || '申し訳ございません。エラーが発生しました。', 'bot');
+        } else {
+            // 予期しないレスポンス構造
+            console.error('Unexpected response structure:', data);
+            addMessage('申し訳ございません。予期しないエラーが発生しました。', 'bot');
+        }
     } catch (error) {
-        addMessage('申し訳ございません。エラーが発生しました。', 'bot');
+        console.error('Fetch error:', error);
+        addMessage('申し訳ございません。通信エラーが発生しました。', 'bot');
     }
 }
 
