@@ -5,12 +5,11 @@ services:
     image: postgres:15-alpine
     container_name: ml_postgres
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: mlapp
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-mlapp}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
     healthcheck:
@@ -23,11 +22,11 @@ services:
     build: ./flask
     container_name: ml_flask
     environment:
-      DATABASE_URL: postgresql://user:password@postgres:5432/mlapp
+      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-mlapp}
       FLASK_ENV: development
     volumes:
       - ./flask:/app
-      - ./models:/app/models  # MLモデル保存用
+      - ./models:/app/models
     depends_on:
       postgres:
         condition: service_healthy
@@ -42,6 +41,7 @@ services:
       - ./flask/static:/static
     depends_on:
       - flask
+      - llm
     restart: unless-stopped
 
   jupyter:
@@ -54,37 +54,31 @@ services:
       - ./data:/workspace/data
       - ./models:/workspace/models
     environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-mlapp}
       JUPYTER_TOKEN: ${JUPYTER_TOKEN}
-      DATABASE_URL: postgresql://user:password@postgres:5432/mlapp
     depends_on:
       - postgres
     restart: unless-stopped
 
-  # オプション: Redis（キャッシュ用）
-  redis:
-    image: redis:7-alpine
-    container_name: ml_redis
-    ports:
-      - "6379:6379"
-    restart: unless-stopped
-
-  # オプション: LLMサービス
+  # 新規追加: LLMサービス
   llm:
     build: ./llm
     container_name: ml_llm
     ports:
       - "5001:5001"
     volumes:
-      - ./llm/training_data.jsonl:/app/training_data.jsonl
+      - ./llm/iris_model:/app/iris_model:rw  # モデルディレクトリを追加
       - llm_models:/app/models
     environment:
       FLASK_ENV: development
       PYTHONUNBUFFERED: 1
+      TRANSFORMERS_CACHE: /app/models
+      TOKENIZERS_PARALLELISM: "false"
     restart: unless-stopped
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 2G  # 20GBに設定
 
 volumes:
   postgres_data:
