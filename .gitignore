@@ -3,3 +3,4 @@ models/*.pkl
 notebooks/.ipynb_checkpoints/
 *.pyc
 __pycache__/
+llm/iris_model/
